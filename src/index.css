@@ -1,0 +1,113 @@
+html, body, #root {
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  margin: 0;
+  padding: 0;
+  font-family: "Akzidenz-Grotesk", sans-serif;
+}
+
+#root > div {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  padding: 0px;
+  box-sizing: border-box;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(37, 37, 37, 0.03);
+
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+}
+
+aside {
+  position: relative;
+  background-color: transparent;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 40px 0 0 0;
+  width: 240px;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+main {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+button {
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.2s ease;
+  cursor: pointer;
+}
+
+button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+input[type="text"] {
+  border: none;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 300px) {
+  aside {
+    display: none;
+  }
+}
+
+aside {
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+aside > div {
+  overflow-y: auto;
+  height: 100%;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 0;
+}
+
+/* Gradient overlay inside scroll container to fade notes */
+aside::before {
+  scrollbar-gutter: stable both-edges;
+  content: "";
+  position: absolute;
+  top: 35px;
+  left: 0;
+  right: 0;
+  height: 20px; /* match top padding */
+  background: linear-gradient(
+    to top,
+    rgba(37, 37, 37, 0.03) 0%,
+    rgb(43, 43, 43) 60%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+aside,
+main {
+  min-width: 0;
+}

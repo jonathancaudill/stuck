@@ -1,0 +1,27 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "core:window:default", 
+    "core:window:allow-start-dragging",
+    "core:window:allow-close",
+    "core:window:allow-center",
+    "core:window:allow-set-size",
+    "core:window:allow-set-focus",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-internal-toggle-maximize",
+    "decorum:allow-show-snap-overlay",
+    "sql:allow-load",
+    "sql:default",
+    "sql:allow-close",
+    "sql:allow-select",
+    "sql:allow-execute"
+  ]
+}
