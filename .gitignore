@@ -22,29 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Node.js stuff
-node_modules/
-dist/
-build/
-npm-debug.log*
-
-# Tauri Rust build artifacts
-src-tauri/target/
-src-tauri/Cargo.lock
-
-# Local environment files
-.env
-.env.local
-.env.*.local
-
-# Editor & OS clutter
-.vscode/
-.idea/
-*.sublime-workspace
-*.sublime-project
-.DS_Store
-Thumbs.db
-
-# Generated database (if you have a local notes.db)
-notes.db
