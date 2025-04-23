@@ -104,7 +104,7 @@ pub fn delete_note(conn: &Connection, id: i32) -> Result<usize> {
     conn.execute("DELETE FROM notes WHERE id = ?1", [id])
 }
 
-// simple edit function -- use later with sync daemon?
+// simple edit function 
 pub fn edit_note(conn: &Connection, id: i32, new_title: &str, new_body: &str) -> Result<usize> {
     conn.execute(
         "UPDATE notes SET title = ?1, body = ?2 WHERE id = ?3",

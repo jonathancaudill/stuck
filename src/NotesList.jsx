@@ -5,7 +5,6 @@ export default function NotesList({ onEdit }) {
   const [notes, setNotes] = useState([]);
 
   useEffect(() => {
-    // Sort by most recently edited (assuming you have a timestamp field)
     const sorted = [...notes].sort((a, b) => new Date(b.last_edited) - new Date(a.last_edited));
     setNotes(sorted);
   }, [notes.length]);

@@ -226,12 +226,12 @@ input, textarea, .ProseMirror {
 .folder-content {
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.15s ease-out;   /* closing animation */
+  transition: max-height 0.15s ease-out;  
 }
 
 .folder-content.open {
-  max-height: 1000px;                       /* or whatever fits your content */
-  transition: max-height 0.45s ease-in;      /* slower opening animation */
+  max-height: 1000px;                       
+  transition: max-height 0.45s ease-in;     
 }
 .app-root {
   font-family: 'Akzidenz-Grotesk', sans-serif;

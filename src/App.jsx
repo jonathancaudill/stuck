@@ -16,14 +16,14 @@ function App() {
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [fontSize, setFontSize] = useState('16px');
   const [uiFontSize, setUiFontSize] = useState(16);
-  // --- DRAG AND FOLDER OPEN STATE ---
+  // === Drag and Folder Open State ===
   const [openFolders, setOpenFolders] = useState({});
-  // --- CUSTOM CONTEXT MENU STATE ---
+  // === Custom Context Menu State ===
   const [ctxMenu, setCtxMenu] = useState({ visible: false, x: 0, y: 0, folder: null });
-  // --- NOTE CONTEXT MENU STATE ---
+  // === Note Context Menu State ===
   const [noteCtxMenu, setNoteCtxMenu] = useState({ visible: false, x: 0, y: 0, note: null });
 
-  // --- DRAG AND FOLDER OPEN STATE HANDLERS ---
+  // === Drag and Folder Handlers ===
   const preDragOpenRef = useRef({});
 
   const origHandleDragEnd = async (result) => {
@@ -81,7 +81,7 @@ function App() {
     setIsAddingFolder(true);
   };
 
-  // Delete folder: log, delete from db, update state, handle selection
+  // Delete folder and its notes, then update React state
   const handleDeleteFolder = async (name) => {
     console.log('Deleting folder:', name);
     try {
@@ -121,13 +121,13 @@ function App() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
-  // --- CLOSE CONTEXT MENU ON CLICK ---
+  // === Close Folder Context Menu on Click ===
   useEffect(() => {
     const handleClick = () => setCtxMenu({ visible: false, x: 0, y: 0, folder: null });
     window.addEventListener('click', handleClick);
     return () => window.removeEventListener('click', handleClick);
   }, []);
-  // --- CLOSE NOTE CONTEXT MENU ON CLICK ---
+  // === Close Note Context Menu on Click ===
   useEffect(() => {
     const handleClick = () => setNoteCtxMenu({ visible: false, x: 0, y: 0, note: null });
     window.addEventListener('click', handleClick);
@@ -170,13 +170,13 @@ function App() {
   useEffect(() => {
     (async () => {
       const db = await getDb();
-      // Try to add the folder column if missing
+      // Add 'folder' column to notes table if missing
       try {
         await db.execute("ALTER TABLE notes ADD COLUMN folder TEXT DEFAULT 'Default'");
       } catch (e) {
-        // column already exists
+        // 'folder' column already exists, skipping
       }
-      // Use original schema for new tables
+      // Ensure notes table schema
       await db.execute(`
         CREATE TABLE IF NOT EXISTS notes (
           id TEXT PRIMARY KEY,
@@ -192,7 +192,7 @@ function App() {
           order_idx INTEGER
         )
       `);
-      // Load folders
+      // Load folders from database
       const folderRows = await db.select('SELECT name FROM folders ORDER BY order_idx ASC');
       let folderList = folderRows.map(r => r.name);
       if (folderList.length === 0) {
