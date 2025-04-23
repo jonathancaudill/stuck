@@ -19,7 +19,8 @@ fn main() {
             window.set_traffic_lights_inset(12.0, 12.0).unwrap();
             window.set_title_bar_style(TitleBarStyle::Overlay).unwrap();
             window.create_overlay_titlebar().unwrap();
-            
+            window.set_title("stuck.") ;
+        
             apply_vibrancy(&window, NSVisualEffectMaterial::HudWindow, None, None)
                 .expect("Unsupported platform! 'apply_vibrancy' is only supported on macOS");
 
