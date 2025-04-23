@@ -1,7 +1,7 @@
-# Tauri + React
+# stuck - a better mac notes app.
 
-This template should help get you started developing with Tauri and React in Vite.
+a more beautiful and functional alternative to macOS stickies/notes.
 
-## Recommended IDE Setup
+## building
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+Would recommend building from source. This project is still in alpha.
