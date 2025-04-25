@@ -101,11 +101,9 @@ function App() {
     return () => window.removeEventListener('resize', updateCompact);
   }, []);
   useEffect(() => {
-    // update OS window title based on compact mode
+    if (!isCompact) return;
     (async () => {
       const win = getCurrentWindow();
-      const newTitle = isCompact ? (title || '[Untitled]') : 'stuck.';
-      await win.setTitle(newTitle);
     })();
   }, [isCompact, title]);
   useEffect(() => {
@@ -279,9 +277,7 @@ function App() {
     setTitle('');
     editor?.commands.setContent('');
     // Update window title to [Untitled] for new note
-    const win = getCurrentWindow();
-    await win.setTitle('[Untitled]');
-    // Focus the title field for the new note
+    //     // Focus the title field for the new note
     if (titleInputRef.current) {
       titleInputRef.current.focus();
     }
@@ -317,9 +313,6 @@ function App() {
       setSelectedNote(note);
       setTitle(note.title);
       editor.commands.setContent(note.body);
-      // Update window title
-      const win = getCurrentWindow();
-      await win.setTitle(note.title || '[Untitled]');
     }
   };
 
@@ -354,10 +347,9 @@ function App() {
 
   const handleTitleChange = async (e) => {
     const newTitle = e.target.value;
+    console.log('Saving title:', newTitle);
     setTitle(newTitle);
-    // Update window title
-    const win = getCurrentWindow();
-    await win.setTitle(newTitle || '[Untitled]');
+
     if (!selectedNote) return;
     const db = await getDb();
     const now = new Date().toISOString();
