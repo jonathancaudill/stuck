@@ -7,6 +7,11 @@ import Placeholder from '@tiptap/extension-placeholder';
 import './App.css';
 import TextStyle from '@tiptap/extension-text-style';
 
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import pinIcon from './assets/pin.svg';
+
+import TitleSetter from './titlesetter';
+
 
 function App() {
   const [notes, setNotes] = useState([]);
@@ -22,6 +27,17 @@ function App() {
   const [ctxMenu, setCtxMenu] = useState({ visible: false, x: 0, y: 0, folder: null });
   // === Note Context Menu State ===
   const [noteCtxMenu, setNoteCtxMenu] = useState({ visible: false, x: 0, y: 0, note: null });
+
+  const [isPinned, setIsPinned] = useState(false);
+
+  const togglePin = async () => {
+    console.log('togglepin called')
+    const newPinned = !isPinned;
+    const window = getCurrentWindow();
+    await window.setAlwaysOnTop(newPinned);
+    await window.setFocus();
+    setIsPinned(newPinned);
+  };
 
   // === Drag and Folder Handlers ===
   const preDragOpenRef = useRef({});
@@ -69,6 +85,29 @@ function App() {
   const newFolderInputRef = useRef(null);
   // Ref to focus the title input on new note
   const titleInputRef = useRef(null);
+
+  // === Compact mode state ===
+  const [isCompact, setIsCompact] = useState(false);
+
+  useEffect(() => {
+    const updateCompact = () => {
+      const { innerWidth: w, innerHeight: h } = window;
+      const compact = w <= 400 && h <= 200;
+      console.log(`updateCompact: width=${w}, height=${h}, isCompact=${compact}`);
+      setIsCompact(compact);
+    };
+    window.addEventListener('resize', updateCompact);
+    updateCompact();
+    return () => window.removeEventListener('resize', updateCompact);
+  }, []);
+  useEffect(() => {
+    // update OS window title based on compact mode
+    (async () => {
+      const win = getCurrentWindow();
+      const newTitle = isCompact ? (title || '[Untitled]') : 'stuck.';
+      await win.setTitle(newTitle);
+    })();
+  }, [isCompact, title]);
   useEffect(() => {
     if (isAddingFolder && newFolderInputRef.current) {
       newFolderInputRef.current.focus();
@@ -208,6 +247,13 @@ function App() {
         folder: row.folder || 'Default'
       }));
       setNotes(parsedNotes);
+      // Default-select the most recently edited note if none is selected
+      if (!selectedNote && parsedNotes.length > 0) {
+        const firstNote = parsedNotes[0];
+        setSelectedNote(firstNote);
+        setTitle(firstNote.title);
+        editor?.commands.setContent(firstNote.body);
+      }
     })();
   }, []);
 
@@ -232,6 +278,9 @@ function App() {
     setSelectedNote(newNote);
     setTitle('');
     editor?.commands.setContent('');
+    // Update window title to [Untitled] for new note
+    const win = getCurrentWindow();
+    await win.setTitle('[Untitled]');
     // Focus the title field for the new note
     if (titleInputRef.current) {
       titleInputRef.current.focus();
@@ -263,11 +312,14 @@ function App() {
     );
   };
 
-  const handleSelect = (note) => {
+  const handleSelect = async (note) => {
     if (!selectedNote || note.id !== selectedNote.id) {
       setSelectedNote(note);
       setTitle(note.title);
       editor.commands.setContent(note.body);
+      // Update window title
+      const win = getCurrentWindow();
+      await win.setTitle(note.title || '[Untitled]');
     }
   };
 
@@ -303,6 +355,9 @@ function App() {
   const handleTitleChange = async (e) => {
     const newTitle = e.target.value;
     setTitle(newTitle);
+    // Update window title
+    const win = getCurrentWindow();
+    await win.setTitle(newTitle || '[Untitled]');
     if (!selectedNote) return;
     const db = await getDb();
     const now = new Date().toISOString();
@@ -321,9 +376,40 @@ function App() {
 
   return (
     <div
-    className= "app-root"
+      className="app-root"
       style={{ display: 'flex', height: '100vh', position: 'relative' }}
     >
+      <TitleSetter title={isCompact ? title : 'stuck.'} />
+      <div
+        onClick={togglePin}
+        className="action-button"
+        style={{
+          position: 'absolute',
+          bottom: '8px',
+          right: '8px',
+          zIndex: 1000,
+          width: '22px',
+          height: '22px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '4px',
+          borderRadius: '6px',
+        }}
+      >
+        <img
+          src={pinIcon}
+          alt={isPinned ? 'Unpin' : 'Pin'}
+          style={{
+            width: '20px',
+            height: '20px',
+            filter: isPinned
+              ? 'drop-shadow(0 0 2px rgba(0,0,0,0.5)) brightness(0) invert(1)'
+              : 'brightness(0) invert(0.7)',
+            opacity: isPinned ? 1 : 0.5,
+          }}
+        />
+      </div>
       <aside style={{ width: '150px', minWidth: '150px', flexShrink: 0, position: 'relative' }}>
         <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="sidebar-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 0, padding: 0 }}>
@@ -557,28 +643,30 @@ function App() {
       </aside>
       <main style={{ flex: 1, padding: '8px', display: 'flex', flexDirection: 'column' }}>
         
-        <input
-          ref={titleInputRef}
-          type="text"
-          placeholder="Title"
-          value={title}
-          onChange={handleTitleChange}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              editor?.commands.focus();
-            }
-          }}
-          style={{
-            marginTop: '10px',
-            marginBottom: '8px',
-            fontSize: uiFontSize + 'px',
-            outline: 'none',
-            border: 'none',
-            background: 'transparent',
-            color: 'white',
-          }}
-        />
+        {!isCompact && (
+          <input
+            ref={titleInputRef}
+            type="text"
+            placeholder="Title"
+            value={title}
+            onChange={handleTitleChange}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                editor?.commands.focus();
+              }
+            }}
+            style={{
+              marginTop: '10px',
+              marginBottom: '8px',
+              fontSize: uiFontSize + 'px',
+              outline: 'none',
+              border: 'none',
+              background: 'transparent',
+              color: 'white',
+            }}
+          />
+        )}
         
         <div
           style={{ flex: 1, overflow: 'auto' }}
@@ -595,8 +683,8 @@ function App() {
                 outline: 'none',
                 fontFamily: 'Akzidenz-Grotesk, sans-serif',
                 color: 'white',
-                fontSize: uiFontSize + 'px',
-                lineHeight: (uiFontSize * 1.5) + 'px',
+                fontSize: (isCompact ? uiFontSize - 3 : uiFontSize) + 'px',
+                lineHeight: ((isCompact ? uiFontSize - 5 : uiFontSize) * 1.5) + 'px',
               }}
             />
           ) : (
@@ -604,7 +692,7 @@ function App() {
           )}
         </div>
         <div style={{ marginTop: '8px' }}>
-          {selectedNote && (
+          {selectedNote && !isCompact && (
             <button
               onClick={() => handleDelete(selectedNote)}
               style={{ marginLeft: '8px' }}

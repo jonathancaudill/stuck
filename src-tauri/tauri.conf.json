@@ -13,13 +13,18 @@
     "macOSPrivateApi": true,
     "windows": [
       {
+        "minWidth": 200,
+        "minHeight": 100,
+        "alwaysOnTop": false,
         "shadow": true,
         "transparent": true,
-        "titleBarStyle": "Transparent"
+        "titleBarStyle": "Transparent",
+        "trafficLightPosition": { "x": 7.0, "y": 10.0 }
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": ["default"]
     }
   },
   "bundle": {

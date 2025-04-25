@@ -17,6 +17,7 @@
     "core:window:allow-is-maximized",
     "core:window:allow-toggle-maximize",
     "core:window:allow-internal-toggle-maximize",
+    "core:window:allow-set-always-on-top",
     "decorum:allow-show-snap-overlay",
     "sql:allow-load",
     "sql:default",
