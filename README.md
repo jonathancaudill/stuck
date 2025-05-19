@@ -4,4 +4,4 @@ The macos notes apps are looking a little worse for wear these days. For years, 
 
 ## Building
 
-Would recommend grabbing the latest release from this project page. **_This project is still in alpha, and may still be unstable. Please don't use it to store anything precious to you quite yet._**.
+Would recommend grabbing the latest release from this project page. **_This project is still in alpha, and is still very unstable. Please don't use it to store anything precious to you quite yet._**.
