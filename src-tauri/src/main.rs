@@ -14,16 +14,16 @@ fn main() {
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
 
-
             #[cfg(target_os = "macos")] {
-            window.set_traffic_lights_inset(12.0, 12.0).unwrap();
-            window.set_title_bar_style(TitleBarStyle::Overlay).ok();
-            window.create_overlay_titlebar().unwrap();
-            window.set_title("");
-        
-            apply_vibrancy(&window, NSVisualEffectMaterial::HudWindow, None, None)
-                .expect("Unsupported platform! 'apply_vibrancy' is only supported on macOS");
-
+                window.set_traffic_lights_inset(12.0, 12.0).unwrap();
+                window.set_title_bar_style(TitleBarStyle::Overlay).ok();
+                window.create_overlay_titlebar().unwrap();
+                window.set_title("");
+                window.make_transparent().unwrap();
+                
+                // Use Sidebar material which is optimized for larger surfaces
+                apply_vibrancy(&window, NSVisualEffectMaterial::Popover, None, None)
+                    .expect("Unsupported platform! 'apply_vibrancy' is only supported on macOS");
             }
             #[cfg(target_os = "windows")]
             apply_blur(&window, Some((18, 18, 18, 125)))
