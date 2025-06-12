@@ -4,4 +4,10 @@ The macos notes apps are looking a little worse for wear these days. For years, 
 
 ## Building
 
-Would recommend grabbing the latest release from this project page. **_This project is still in alpha, and may still be unstable. Please don't use it to store anything precious to you quite yet._**.
+Grab the latest release from the project page.
+
+## Roadmap
+* Note tagging
+* Continued UI Refinements
+* Dockerized Backend
+* Multi-platform compatibility
