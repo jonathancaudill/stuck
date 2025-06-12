@@ -48,17 +48,27 @@ function App() {
     if (!destination) return;
     const srcFolder = source.droppableId;
     const destFolder = destination.droppableId;
+    
+    // Update the notes array
     setNotes(prev => {
-      // Only reorder notes of that folder, but reconstruct the full array.
-      const notesByFolder = prev.filter(n => n.folder === srcFolder);
-      const moved = notesByFolder.splice(source.index, 1)[0];
-      moved.folder = destFolder;
-      notesByFolder.splice(destination.index, 0, moved);
-      // Remove moved note from prev, then insert updated
-      const others = prev.filter(n => n.id !== draggableId);
-      return [...others, moved];
+      // Find the note being moved
+      const noteToMove = prev.find(n => n.id.toString() === draggableId);
+      if (!noteToMove) return prev;
+      
+      // Create a new array without the moved note
+      const notesWithoutMoved = prev.filter(n => n.id.toString() !== draggableId);
+      
+      // Create the updated note with the new folder
+      const updatedNote = { ...noteToMove, folder: destFolder };
+      
+      // Return the new array with the updated note
+      return [...notesWithoutMoved, updatedNote];
     });
-    // Persist folder change
+
+    // Update selected folder to match the destination
+    setSelectedFolder(destFolder);
+
+    // Persist folder change in database
     const db = await getDb();
     await db.execute('UPDATE notes SET folder = ? WHERE id = ?', [destFolder, draggableId]);
   };
@@ -143,16 +153,49 @@ function App() {
 
   useEffect(() => {
     const handler = (e) => {
+      // Font size shortcuts
       if (e.metaKey && (e.key === '+' || e.key === '=')) {
         setUiFontSize(size => size + 1);
       }
       if (e.metaKey && e.key === '-') {
         setUiFontSize(size => size - 1);
       }
+      
+      // New note shortcut (⌘N)
+      if (e.metaKey && e.key === 'n') {
+        e.preventDefault();
+        handleNew();
+      }
+      
+      // Save shortcut (⌘S)
+      if (e.metaKey && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      }
+      
+      // Delete note shortcut (⌘⌫)
+      if (e.metaKey && e.key === 'Backspace') {
+        e.preventDefault();
+        if (selectedNote) {
+          handleDelete(selectedNote);
+        }
+      }
+      
+      // Toggle compact mode (⌘M)
+      if (e.metaKey && e.key === 'm') {
+        e.preventDefault();
+        toggleCompact();
+      }
+      
+      // Toggle pin (⌘P)
+      if (e.metaKey && e.key === 'p') {
+        e.preventDefault();
+        togglePin();
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [selectedNote]); // Add selectedNote as dependency since it's used in the handler
   // === Close Folder Context Menu on Click ===
   useEffect(() => {
     const handleClick = () => setCtxMenu({ visible: false, x: 0, y: 0, folder: null });
@@ -202,79 +245,98 @@ function App() {
   useEffect(() => {
     (async () => {
       const db = await getDb();
-      // Add 'folder' column to notes table if missing
+      
       try {
-        await db.execute("ALTER TABLE notes ADD COLUMN folder TEXT DEFAULT 'Default'");
-      } catch (e) {
-        // 'folder' column already exists, skipping
-      }
-      // Ensure notes table schema
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS notes (
-          id TEXT PRIMARY KEY,
-          title TEXT NOT NULL,
-          body TEXT NOT NULL,
-          last_edited TEXT NOT NULL
-        )
-      `);
-      // Ensure folders table exists
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS folders (
-          name TEXT PRIMARY KEY,
-          order_idx INTEGER
-        )
-      `);
-      // Load folders from database
-      const folderRows = await db.select('SELECT name FROM folders ORDER BY order_idx ASC');
-      let folderList = folderRows.map(r => r.name);
-      if (folderList.length === 0) {
-        folderList = ['Default'];
-        await db.execute('INSERT INTO folders (name, order_idx) VALUES (?, ?)', ['Default', 0]);
-      }
-      setFolders(folderList);
-      setSelectedFolder(folderList[0]);
-      // Then load notes as before and parse row.folder
-      const rows = await db.select('SELECT * FROM notes ORDER BY last_edited DESC');
-      const parsedNotes = rows.map(row => ({
-        ...row,
-        folder: row.folder || 'Default'
-      }));
-      setNotes(parsedNotes);
-      // Default-select the most recently edited note if none is selected
-      if (!selectedNote && parsedNotes.length > 0) {
-        const firstNote = parsedNotes[0];
-        setSelectedNote(firstNote);
-        setTitle(firstNote.title);
-        editor?.commands.setContent(firstNote.body);
+        // Load folders from database
+        const folderRows = await db.select('SELECT name FROM folders ORDER BY order_idx ASC');
+        let folderList = folderRows.map(r => r.name);
+        
+        // Always ensure default folders exist
+        if (!folderList.includes('Default') || !folderList.includes('Trash')) {
+          await db.execute(`
+            INSERT OR IGNORE INTO folders (name, order_idx) VALUES 
+            ('Default', 0),
+            ('Trash', 999)
+          `);
+          // Reload folders after ensuring defaults exist
+          const updatedFolderRows = await db.select('SELECT name FROM folders ORDER BY order_idx ASC');
+          folderList = updatedFolderRows.map(r => r.name);
+        }
+        
+        setFolders(folderList);
+        setSelectedFolder(folderList[0] || 'Default');
+        
+        // Initialize open folders state
+        const initialOpenFolders = {};
+        folderList.forEach(folder => {
+          initialOpenFolders[folder] = true; // Open all folders by default
+        });
+        setOpenFolders(initialOpenFolders);
+        
+        // Load notes
+        const rows = await db.select('SELECT * FROM notes ORDER BY last_edited DESC');
+        const parsedNotes = rows.map(row => ({
+          ...row,
+          folder: row.folder || 'Default'
+        }));
+        setNotes(parsedNotes);
+        
+        // Default-select the most recently edited note if none is selected
+        if (!selectedNote && parsedNotes.length > 0) {
+          const firstNote = parsedNotes[0];
+          setSelectedNote(firstNote);
+          setTitle(firstNote.title);
+          editor?.commands.setContent(firstNote.body);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
       }
     })();
   }, []);
 
   const handleNew = async () => {
     console.log('Creating new note');
+    const now = new Date().toISOString();
     const newNote = {
-      id: crypto.randomUUID(),
+      id: null, // Let SQLite auto-generate the ID
       title: '',
       body: editor?.getHTML() || '',
-      last_edited: new Date().toISOString(),
+      created_at: now,
+      last_edited: now,
       folder: selectedFolder
     };
 
+    console.log('New note object:', newNote);
     const db = await getDb();
+    console.log('Got database connection');
 
-    await db.execute(
-      'INSERT INTO notes (id, title, body, last_edited, folder) VALUES (?, ?, ?, ?, ?)',
-      [newNote.id, newNote.title, newNote.body, newNote.last_edited, selectedFolder]
-    );
+    try {
+      console.log('Executing INSERT query...');
+      await db.execute(
+        'INSERT INTO notes (title, body, created_at, last_edited, folder) VALUES (?, ?, ?, ?, ?)',
+        [newNote.title, newNote.body, newNote.created_at, newNote.last_edited, selectedFolder]
+      );
+      console.log('INSERT query executed successfully');
 
-    setNotes((prevNotes) => [newNote, ...prevNotes]);
-    setSelectedNote(newNote);
-    setTitle('');
-    editor?.commands.setContent('');
-    // Update window title to [Untitled] for new note
-    //     // Focus the title field for the new note
-    if (titleInputRef.current) {
-      titleInputRef.current.focus();
+      console.log('Fetching inserted note...');
+      const result = await db.select('SELECT * FROM notes WHERE created_at = ?', [now]);
+      console.log('Query result:', result);
+      const insertedNote = result[0];
+
+      if (insertedNote) {
+        console.log('Successfully retrieved inserted note:', insertedNote);
+        setNotes((prevNotes) => [insertedNote, ...prevNotes]);
+        setSelectedNote(insertedNote);
+        setTitle('');
+        editor?.commands.setContent('');
+        if (titleInputRef.current) {
+          titleInputRef.current.focus();
+        }
+      } else {
+        console.error('Failed to retrieve inserted note - result was empty');
+      }
+    } catch (error) {
+      console.error('Error creating new note:', error);
     }
   };
 
@@ -312,31 +374,79 @@ function App() {
   };
 
   const handleDelete = async (note) => {
-    console.log('Deleting note:', note.id, note.title);
+    console.log('Moving note to trash:', note.id, note.title);
     const db = await getDb();
-    const currentIndex = notes.findIndex(n => n.id === note.id);
-    await db.execute('DELETE FROM notes WHERE id = ?', [note.id]);
+    const now = new Date().toISOString();
+    
+    // Move note to Trash folder and set deleted_at timestamp
+    await db.execute(
+      'UPDATE notes SET folder = ?, deleted_at = ? WHERE id = ?',
+      ['Trash', now, note.id]
+    );
+    
     const rows = await db.select('SELECT * FROM notes ORDER BY last_edited DESC');
     const parsedRows = rows.map(row => ({
       ...row,
       folder: row.folder || 'Default'
     }));
     setNotes(parsedRows);
-    // Determine the next note index: prefer the same index, else fall back to previous
-    let nextIndex = currentIndex;
-    if (nextIndex >= parsedRows.length) {
-      nextIndex = parsedRows.length - 1;
+    
+    // If the deleted note was selected, select another note
+    if (selectedNote?.id === note.id) {
+      const nextNote = parsedRows.find(n => n.id !== note.id);
+      if (nextNote) {
+        setSelectedNote(nextNote);
+        setTitle(nextNote.title);
+        editor.commands.setContent(nextNote.body);
+      } else {
+        setSelectedNote(null);
+        setTitle('');
+        editor.commands.setContent('');
+      }
     }
-    if (nextIndex >= 0) {
-      const nextNote = parsedRows[nextIndex];
-      setSelectedNote(nextNote);
-      setTitle(nextNote.title);
-      editor.commands.setContent(nextNote.body);
-    } else {
-      // No notes left
-      setSelectedNote(null);
-      setTitle('');
-      editor.commands.setContent('');
+  };
+
+  const handleRestore = async (note) => {
+    console.log('Restoring note:', note.id, note.title);
+    const db = await getDb();
+    
+    // Move note back to Default folder and clear deleted_at
+    await db.execute(
+      'UPDATE notes SET folder = ?, deleted_at = NULL WHERE id = ?',
+      ['Default', note.id]
+    );
+    
+    const rows = await db.select('SELECT * FROM notes ORDER BY last_edited DESC');
+    const parsedRows = rows.map(row => ({
+      ...row,
+      folder: row.folder || 'Default'
+    }));
+    setNotes(parsedRows);
+  };
+
+  const handlePermanentDelete = async (note) => {
+    console.log('Permanently deleting note:', note.id, note.title);
+    const db = await getDb();
+    await db.execute('DELETE FROM notes WHERE id = ?', [note.id]);
+    
+    const rows = await db.select('SELECT * FROM notes ORDER BY last_edited DESC');
+    const parsedRows = rows.map(row => ({
+      ...row,
+      folder: row.folder || 'Default'
+    }));
+    setNotes(parsedRows);
+    
+    if (selectedNote?.id === note.id) {
+      const nextNote = parsedRows.find(n => n.id !== note.id);
+      if (nextNote) {
+        setSelectedNote(nextNote);
+        setTitle(nextNote.title);
+        editor.commands.setContent(nextNote.body);
+      } else {
+        setSelectedNote(null);
+        setTitle('');
+        editor.commands.setContent('');
+      }
     }
   };
 
@@ -384,8 +494,9 @@ function App() {
     console.log('Deleting folder:', name);
     try {
       const db = await getDb();
-      // Move notes to Default folder instead of deleting them
-      await db.execute('UPDATE notes SET folder = ? WHERE folder = ?', ['Default', name]);
+      // Move notes to Trash folder instead of Default
+      await db.execute('UPDATE notes SET folder = ?, deleted_at = ? WHERE folder = ?', 
+        ['Trash', new Date().toISOString(), name]);
       await db.execute('DELETE FROM folders WHERE name = ?', [name]);
       console.log('SQL update complete for folder:', name);
     } catch (err) {
@@ -401,7 +512,7 @@ function App() {
       return updated;
     });
     setNotes(prevNotes => prevNotes.map(n => 
-      n.folder === name ? { ...n, folder: 'Default' } : n
+      n.folder === name ? { ...n, folder: 'Trash', deleted_at: new Date().toISOString() } : n
     ));
     setOpenFolders(prevOpen => {
       const { [name]: _, ...rest } = prevOpen;
@@ -551,18 +662,6 @@ function App() {
                   <button
                     onClick={handleAddFolder}
                     className="new-folder-button"
-                    style={{
-                      color: 'white',
-                      background: 'none',
-                      border: 'none',
-                      padding: '4px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '22px',
-                      height: '22px',
-                    }}
                   >
                     <img
                       src={newFolderIcon}
@@ -570,10 +669,7 @@ function App() {
                       style={{
                         width: '20px',
                         height: '20px',
-                        filter: isDarkMode
-                          ? 'brightness(0) invert(0.7)'
-                          : 'brightness(0) invert(0.3)',
-                        opacity: 0.5,
+                        filter: 'brightness(0) invert(1)'
                       }}
                     />
                   </button>
@@ -591,6 +687,7 @@ function App() {
                         e.stopPropagation();
                         // Only show folder context menu if clicking on the folder header
                         if (e.target.closest('[data-folder-header]')) {
+                          setSelectedFolder(folder);
                           setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, folder });
                           setNoteCtxMenu({ visible: false, x: 0, y: 0, note: null });
                         }
@@ -675,12 +772,14 @@ function App() {
                             notes
                               .filter(note => note.folder === folder)
                               .map((note, idx) => (
-                                <Draggable key={note.id} draggableId={note.id} index={idx}>
+                                <Draggable key={note.id} draggableId={note.id.toString()} index={idx}>
                                   {(provided, snapshot) => {
-                                    const providedStyle = provided.draggableProps.style || {};
-                                    const transform = providedStyle.transform || '';
-                                    const yMatch = transform.match(/translate\(.*px,\s*([-\d.]+)px\)/);
-                                    const y = yMatch ? `${yMatch[1]}px` : '0px';
+                                    const style = {
+                                      ...provided.draggableProps.style,
+                                      transform: provided.draggableProps.style?.transform
+                                        ? provided.draggableProps.style.transform.replace(/translate\(([^,]+),([^)]+)\)/, (_, x, y) => `translate(0px,${y})`)
+                                        : undefined,
+                                    };
                                     return (
                                       <div
                                         ref={provided.innerRef}
@@ -690,12 +789,13 @@ function App() {
                                         onContextMenu={e => {
                                           e.preventDefault();
                                           e.stopPropagation();
+                                          setSelectedFolder(folder);
+                                          handleSelect(note);
                                           setNoteCtxMenu({ visible: true, x: e.clientX, y: e.clientY, note: note.id });
                                           setCtxMenu({ visible: false, x: 0, y: 0, folder: null });
                                         }}
                                         style={{
-                                          ...providedStyle,
-                                          transform: `translate(0px, ${y})`,
+                                          ...style,
                                           padding: '8px',
                                           paddingLeft: '12px',
                                           borderLeft: `2px solid ${borderColor}`,
@@ -717,9 +817,9 @@ function App() {
                                 </Draggable>
                               ))
                           )}
+                          {provided.placeholder}
                         </div>
                       )}
-                      {provided.placeholder}
                     </div>
                   )}
                 </Droppable>
@@ -826,22 +926,59 @@ function App() {
           zIndex: 9999,
           border: isDarkMode ? '1px solid #444' : '1px solid #ddd',
         }}>
-          <li
-            style={{ padding: '4px 12px', cursor: 'pointer', color: isDarkMode ? '#ff6b6b' : '#c00', userSelect: 'none' }}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              const noteToDelete = notes.find(n => n.id === noteCtxMenu.note);
-              if (noteToDelete) {
-                handleDelete(noteToDelete);
-              }
-              setNoteCtxMenu({ ...noteCtxMenu, visible: false });
-            }}
-            onMouseOver={e => e.currentTarget.style.background = isDarkMode ? '#444' : '#f0f0f0'}
-            onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-          >
-            Delete Note
-          </li>
+          {selectedFolder === 'Trash' ? (
+            <>
+              <li
+                style={{ padding: '4px 12px', cursor: 'pointer', color: isDarkMode ? '#4CAF50' : '#2E7D32', userSelect: 'none' }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const noteToRestore = notes.find(n => n.id === noteCtxMenu.note);
+                  if (noteToRestore) {
+                    handleRestore(noteToRestore);
+                  }
+                  setNoteCtxMenu({ ...noteCtxMenu, visible: false });
+                }}
+                onMouseOver={e => e.currentTarget.style.background = isDarkMode ? '#444' : '#f0f0f0'}
+                onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+              >
+                Restore Note
+              </li>
+              <li
+                style={{ padding: '4px 12px', cursor: 'pointer', color: isDarkMode ? '#ff6b6b' : '#c00', userSelect: 'none' }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const noteToDelete = notes.find(n => n.id === noteCtxMenu.note);
+                  if (noteToDelete) {
+                    handlePermanentDelete(noteToDelete);
+                  }
+                  setNoteCtxMenu({ ...noteCtxMenu, visible: false });
+                }}
+                onMouseOver={e => e.currentTarget.style.background = isDarkMode ? '#444' : '#f0f0f0'}
+                onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+              >
+                Delete Permanently
+              </li>
+            </>
+          ) : (
+            <li
+              style={{ padding: '4px 12px', cursor: 'pointer', color: isDarkMode ? '#ff6b6b' : '#c00', userSelect: 'none' }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const noteToDelete = notes.find(n => n.id === noteCtxMenu.note);
+                if (noteToDelete) {
+                  handleDelete(noteToDelete);
+                }
+                setNoteCtxMenu({ ...noteCtxMenu, visible: false });
+              }}
+              onMouseOver={e => e.currentTarget.style.background = isDarkMode ? '#444' : '#f0f0f0'}
+              onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+            >
+              Delete Note
+            </li>
+          )}
         </ul>
       )}
     </div>

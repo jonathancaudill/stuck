@@ -389,3 +389,29 @@ input, textarea, .ProseMirror {
 .app-root {
   font-family: 'Akzidenz-Grotesk', sans-serif;
 }
+
+.new-folder-button {
+  all: unset;
+  color: white;
+  background: transparent !important;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  transition: all 0.2s ease;
+  opacity: 0.5;
+  filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.new-folder-button:hover {
+  opacity: 1;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
+  background: transparent !important;
+}

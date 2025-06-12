@@ -1,5 +1,5 @@
 use rusqlite::Connection;
-use crate::db::{add_note, list_notes, search_notes, delete_note, edit_note};
+use crate::db::{add_note, list_notes, search_notes, delete_note, edit_note, move_to_trash, restore_note, cleanup_old_notes};
 
 // CLI commandz
 pub fn run_cli_command(conn: &Connection, args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
@@ -20,7 +20,14 @@ pub fn run_cli_command(conn: &Connection, args: &[String]) -> Result<(), Box<dyn
         Some("list") => {
             let notes = list_notes(conn)?;
             for note in notes {
-                println!("#{}\n📄 {}\n{}\n📅 {}\n---", note.id, note.title, note.body, note.created_at);
+                let folder_info = if note.folder == "Trash" {
+                    format!(" [Trash]")
+                } else if note.folder != "Default" {
+                    format!(" [{}]", note.folder)
+                } else {
+                    String::new()
+                };
+                println!("#{}\n📄 {}{}\n{}\n📅 {}\n---", note.id, note.title, folder_info, note.body, note.created_at);
             }
         }
 
@@ -34,7 +41,14 @@ pub fn run_cli_command(conn: &Connection, args: &[String]) -> Result<(), Box<dyn
                     println!("🤷 No matching notes found.");
                 } else {
                     for note in results {
-                        println!("#{}\n📄 {}\n{}\n📅 {}\n---", note.id, note.title, note.body, note.created_at);
+                        let folder_info = if note.folder == "Trash" {
+                            format!(" [Trash]")
+                        } else if note.folder != "Default" {
+                            format!(" [{}]", note.folder)
+                        } else {
+                            String::new()
+                        };
+                        println!("#{}\n📄 {}{}\n{}\n📅 {}\n---", note.id, note.title, folder_info, note.body, note.created_at);
                     }
                 }
             }
@@ -45,9 +59,9 @@ pub fn run_cli_command(conn: &Connection, args: &[String]) -> Result<(), Box<dyn
             match id_arg {
                 Some(id_str) => match id_str.parse::<i32>() {
                     Ok(id) => {
-                        let deleted = delete_note(conn, id)?;
+                        let deleted = move_to_trash(conn, id)?;
                         if deleted > 0 {
-                            println!("Note #{} deleted.", id);
+                            println!("Note #{} moved to trash.", id);
                         } else {
                             println!("No note found with ID {}.", id);
                         }
@@ -56,6 +70,42 @@ pub fn run_cli_command(conn: &Connection, args: &[String]) -> Result<(), Box<dyn
                 },
                 None => println!("Usage: stuck delete <note_id>"),
             }
+        }
+
+        Some("restore") => {
+            let id_arg = args.get(2);
+            match id_arg {
+                Some(id_str) => match id_str.parse::<i32>() {
+                    Ok(id) => {
+                        let restored = restore_note(conn, id)?;
+                        if restored > 0 {
+                            println!("Note #{} restored from trash.", id);
+                        } else {
+                            println!("No note found with ID {}.", id);
+                        }
+                    }
+                    Err(_) => println!("Invalid ID: must be a number."),
+                },
+                None => println!("Usage: stuck restore <note_id>"),
+            }
+        }
+
+        Some("trash") => {
+            let notes = list_notes(conn)?;
+            let trash_notes: Vec<_> = notes.into_iter().filter(|n| n.folder == "Trash").collect();
+            if trash_notes.is_empty() {
+                println!("🗑️  Trash is empty.");
+            } else {
+                println!("🗑️  Trash contents:");
+                for note in trash_notes {
+                    println!("#{}\n📄 {}\n{}\n📅 {}\n---", note.id, note.title, note.body, note.created_at);
+                }
+            }
+        }
+
+        Some("cleanup") => {
+            let deleted = cleanup_old_notes(conn)?;
+            println!("🧹 Cleaned up {} old notes from trash.", deleted);
         }
 
         Some("edit") => {
@@ -89,6 +139,9 @@ pub fn run_cli_command(conn: &Connection, args: &[String]) -> Result<(), Box<dyn
             println!("  stuck list");
             println!("  stuck search \"query\"");
             println!("  stuck delete <id>");
+            println!("  stuck restore <id>");
+            println!("  stuck trash");
+            println!("  stuck cleanup");
             println!("  stuck edit <id> \"new title\" \"new body\"");
         }
     }
