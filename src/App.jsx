@@ -20,7 +20,7 @@ function App() {
   const [title, setTitle] = useState('');
   const [folders, setFolders] = useState([]);
   const [selectedFolder, setSelectedFolder] = useState(null);
-  const [fontSize, setFontSize] = useState('16px');
+  const [editorFontSize, setEditorFontSize] = useState(16);
   const [uiFontSize, setUiFontSize] = useState(16);
   // === Drag and Folder Open State ===
   const [openFolders, setOpenFolders] = useState({});
@@ -155,12 +155,14 @@ function App() {
 
   useEffect(() => {
     const handler = (e) => {
-      // Font size shortcuts
+      // Font size shortcuts (editor only)
       if (e.metaKey && (e.key === '+' || e.key === '=')) {
-        setUiFontSize(size => size + 1);
+        setEditorFontSize(size => Math.min(size + 1, 48));
+        e.preventDefault();
       }
       if (e.metaKey && e.key === '-') {
-        setUiFontSize(size => size - 1);
+        setEditorFontSize(size => Math.max(size - 1, 8));
+        e.preventDefault();
       }
       
       // New note shortcut (⌘N)
@@ -859,7 +861,7 @@ function App() {
           style={{ flexGrow: 1 }}
           onClick={() => editor?.commands.focus()}
         >
-          <EditorContent editor={editor} />
+          <EditorContent editor={editor} style={{ fontSize: editorFontSize + 'px' }} />
         </div>
       </main>
       {/* Folder context menu */}
