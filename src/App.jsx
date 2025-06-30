@@ -151,6 +151,8 @@ function App() {
     }
   }, [isAddingFolder]);
 
+
+
   useEffect(() => {
     const handler = (e) => {
       // Font size shortcuts

@@ -32,7 +32,7 @@ html, body, #root {
   height: 100%;
   padding: 0px;
   box-sizing: border-box;
-  border-radius: 11px;
+  border-radius: 17px;
   border: 1px solid var(--border-color);
   background-color: var(--overlay-color);
 
@@ -46,8 +46,11 @@ aside {
   background-color: transparent;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   padding: 40px 0 0 0;
-  width: 240px;
-  overflow: visible;
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
+  flex-shrink: 0;
+  overflow: hidden;
   box-sizing: border-box;
 }
 
@@ -91,24 +94,77 @@ input[type="text"] {
   }
 }
 
-aside {
-  width: 150px;
-  min-width: 150px;
-  max-width: 150px;
-  flex-shrink: 0;
-  overflow: visible;
-}
-
 aside > div {
   overflow-y: auto;
   height: 100%;
   box-sizing: border-box;
   position: relative;
   z-index: 0;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+/* Single sidebar scrollbar */
+aside > div::-webkit-scrollbar {
+  display: none !important;
+}
+
+aside > div::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+aside > div::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+aside > div::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 
 aside,
 main {
   min-width: 0;
+}
+
+/* Nice translucent scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Allow scrollbars for the editor when content overflows */
+.ProseMirror {
+  overflow-y: auto;
+}
+
+/* Ensure the main content area can scroll when needed */
+main {
+  overflow-y: auto;
+}
+
+/* Ensure the app root can scroll when needed */
+
+
+.app-root {
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-root::-webkit-scrollbar {
+  display: none;
 }

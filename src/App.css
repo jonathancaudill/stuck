@@ -342,6 +342,29 @@ html, body, #root, .container, aside, main {
   -webkit-user-select: none;
 }
 
+/* Nice translucent scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Allow scrollbars for the editor when content overflows */
+.ProseMirror {
+  overflow-y: auto;
+}
+
 /* Re-enable text selection in inputs and editor */
 input, textarea, .ProseMirror {
   user-select: text;
@@ -388,6 +411,19 @@ input, textarea, .ProseMirror {
 }
 .app-root {
   font-family: 'Akzidenz-Grotesk', sans-serif;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-root::-webkit-scrollbar {
+  display: none;
+}
+
+/* Ensure sidebar can scroll when needed */
+.sidebar-scroll {
+  overflow-y: auto;
+  height: 100%;
 }
 
 .new-folder-button {
