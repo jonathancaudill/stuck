@@ -67,3 +67,6 @@ next-env.d.ts
 # Development artifacts
 *.log
 notes-tauri
+
+# build files
+stuck.zip
